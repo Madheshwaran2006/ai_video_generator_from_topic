@@ -24,7 +24,6 @@ public class ExplainerController {
     @Value("${output.dir}")
     private String outputDir;
 
-    // Full pipeline endpoint
     @PostMapping("/generate")
     public ResponseEntity<ExplainerResponse> generate(@RequestBody ExplainerRequest request) {
         try {
@@ -33,30 +32,21 @@ public class ExplainerController {
             String model = request.getModel();
             String fileId = topic.replaceAll("\\s+", "_").toLowerCase() + "_" + System.currentTimeMillis();
 
-            // Step 1: Generate script
             String script = scriptGenerator.generateScript(topic, difficulty, model);
-
-            // Step 2: Parse into scenes
             List<Scene> scenes = sceneParser.parseScenes(script);
-            System.out.println("DEBUG: script length=" + script.length());
-            System.out.println("DEBUG: scenes count=" + scenes.size());
-            System.out.println("DEBUG: script preview=" + script.substring(0, Math.min(300, script.length())));
 
             if (scenes.isEmpty()) {
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ExplainerResponse.builder()
                         .status("ERROR")
-                        .message("No scenes parsed from script. Script: " + script.substring(0, Math.min(500, script.length())))
+                        .message("No scenes parsed from script.")
                         .build());
             }
 
-            // Step 3: Generate voice audio
             String audioPath = voiceGenerator.generateAudio(script, fileId);
+            videoAssembler.assembleVideo(scenes, audioPath, fileId);
 
-            // Step 4: Assemble video
-            String videoPath = videoAssembler.assembleVideo(scenes, audioPath, fileId);
-
-            ExplainerResponse response = ExplainerResponse.builder()
+            return ResponseEntity.ok(ExplainerResponse.builder()
                 .topic(topic)
                 .fullScript(script)
                 .scenes(scenes)
@@ -64,9 +54,7 @@ public class ExplainerController {
                 .videoFileName(fileId + ".mp4")
                 .status("SUCCESS")
                 .message("Video generated successfully")
-                .build();
-
-            return ResponseEntity.ok(response);
+                .build());
 
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -77,7 +65,6 @@ public class ExplainerController {
         }
     }
 
-    // Script only endpoint (no audio/video)
     @PostMapping("/script")
     public ResponseEntity<ExplainerResponse> scriptOnly(@RequestBody ExplainerRequest request) {
         try {
@@ -104,15 +91,13 @@ public class ExplainerController {
         }
     }
 
-    // Download generated video
     @GetMapping("/download/{fileName}")
     public ResponseEntity<Resource> downloadVideo(@PathVariable String fileName) {
         try {
             Path filePath = Paths.get(outputDir, fileName).toAbsolutePath();
 
             if (!Files.exists(filePath)) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(null);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
             }
 
             Resource resource = new FileSystemResource(filePath);

@@ -24,7 +24,6 @@ public class ScriptGeneratorService {
     public String generateScript(String topic, String difficulty, String model) {
         String prompt = buildPrompt(topic, difficulty);
 
-        // Use provided model or fallback to default
         String selectedModel = (model != null && !model.isEmpty()) ? model : this.model;
 
         Map<String, Object> requestBody = new HashMap<>();
