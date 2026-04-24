@@ -1,0 +1,13 @@
+# Server
+server.port=8080
+
+# Groq API — set GROQ_API_KEY as environment variable
+openai.api.key=${GROQ_API_KEY}
+openai.api.url=https://api.groq.com/openai/v1/chat/completions
+openai.model=llama-3.3-70b-versatile
+
+# FFmpeg path — update this to your local FFmpeg path
+ffmpeg.path=ffmpeg
+
+# Output directory for generated files
+output.dir=C:/aiexplainer/generated

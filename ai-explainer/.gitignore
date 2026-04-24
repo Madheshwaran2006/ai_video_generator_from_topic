@@ -1,8 +1,7 @@
 # Security — never commit these
 .env
 *.env
-
-# API keys
+application.properties
 application-secrets.properties
 
 # Spring Boot
