@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Explainer Generator</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #0f0f1a;
+            color: #e0e0e0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 20px;
+        }
+
+        h1 {
+            font-size: 2rem;
+            color: #7c6af7;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            color: #888;
+            margin-bottom: 40px;
+            font-size: 0.95rem;
+        }
+
+        .card {
+            background: #1a1a2e;
+            border: 1px solid #2a2a4a;
+            border-radius: 16px;
+            padding: 32px;
+            width: 100%;
+            max-width: 600px;
+            margin-bottom: 24px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #aaa;
+            font-size: 0.9rem;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 12px 16px;
+            background: #0f0f1a;
+            border: 1px solid #2a2a4a;
+            border-radius: 8px;
+            color: #e0e0e0;
+            font-size: 1rem;
+            margin-bottom: 20px;
+            outline: none;
+            transition: border 0.2s;
+        }
+
+        input:focus, select:focus {
+            border-color: #7c6af7;
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            background: #7c6af7;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        button:hover { background: #6a58e0; }
+        button:disabled { background: #444; cursor: not-allowed; }
+
+        .pipeline {
+            display: flex;
+            justify-content: space-between;
+            margin: 24px 0;
+            gap: 8px;
+        }
+
+        .step {
+            flex: 1;
+            text-align: center;
+            padding: 10px 4px;
+            border-radius: 8px;
+            background: #0f0f1a;
+            border: 1px solid #2a2a4a;
+            font-size: 0.75rem;
+            color: #666;
+            transition: all 0.3s;
+        }
+
+        .step.active { border-color: #7c6af7; color: #7c6af7; }
+        .step.done { border-color: #4caf50; color: #4caf50; }
+        .step-icon { font-size: 1.2rem; display: block; margin-bottom: 4px; }
+
+        #result { display: none; }
+
+        .script-box {
+            background: #0f0f1a;
+            border: 1px solid #2a2a4a;
+            border-radius: 8px;
+            padding: 16px;
+            font-size: 0.85rem;
+            line-height: 1.7;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-bottom: 16px;
+        }
+
+        .scenes-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .scene-card {
+            background: #0f0f1a;
+            border: 1px solid #2a2a4a;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 0.8rem;
+        }
+
+        .scene-card .scene-title {
+            color: #7c6af7;
+            font-weight: bold;
+            margin-bottom: 6px;
+        }
+
+        .download-btn {
+            background: #4caf50;
+            margin-top: 8px;
+        }
+
+        .download-btn:hover { background: #43a047; }
+
+        .error {
+            color: #f44336;
+            background: #1a0a0a;
+            border: 1px solid #f44336;
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 16px;
+            display: none;
+        }
+
+        .loader {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: #7c6af7;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>⚡ AI Explainer Generator</h1>
+    <p class="subtitle">Turn any engineering concept into a 2–3 min explainer video</p>
+
+    <div class="card">
+        <label>Topic</label>
+        <input type="text" id="topic" placeholder="e.g. LRU Page Replacement, Deadlock, CPU Scheduling" />
+
+        <label>Difficulty Level</label>
+        <select id="difficulty">
+            <option value="beginner">Beginner</option>
+            <option value="intermediate">Intermediate</option>
+            <option value="advanced">Advanced</option>
+        </select>
+
+        <label>AI Model</label>
+        <select id="model">
+            <option value="llama-3.3-70b-versatile">Llama 3.3 70B (Fast, Free)</option>
+            <option value="llama-3.1-70b-versatile">Llama 3.1 70B</option>
+            <option value="mixtral-8x7b-32768">Mixtral 8x7B (Balanced)</option>
+            <option value="gemma2-9b-it">Gemma 2 9B (Lightweight)</option>
+        </select>
+
+        <!-- Pipeline Steps -->
+        <div class="pipeline">
+            <div class="step" id="step1"><span class="step-icon">🧠</span>Script</div>
+            <div class="step" id="step2"><span class="step-icon">🎬</span>Scenes</div>
+            <div class="step" id="step3"><span class="step-icon">🎙️</span>Voice</div>
+            <div class="step" id="step4"><span class="step-icon">🎞️</span>Video</div>
+        </div>
+
+        <button id="generateBtn" onclick="generateFull()">🚀 Generate Explainer Video</button>
+        <button style="background:#2a2a4a; margin-top:10px;" onclick="generateScriptOnly()">📄 Script Only (No API keys needed)</button>
+
+        <div class="loader" id="loader">⏳ Generating... this may take 30–60 seconds</div>
+        <div class="error" id="error"></div>
+    </div>
+
+    <div class="card" id="result">
+        <h2 style="color:#7c6af7; margin-bottom:16px;">✅ Generated Output</h2>
+
+        <p style="color:#aaa; font-size:0.85rem; margin-bottom:8px;">Full Script</p>
+        <div class="script-box" id="scriptOutput"></div>
+
+        <p style="color:#aaa; font-size:0.85rem; margin-bottom:8px;">Scenes</p>
+        <div class="scenes-grid" id="scenesOutput"></div>
+
+        <div id="downloadSection" style="display:none;">
+            <button class="download-btn" id="downloadBtn">⬇️ Download Video</button>
+        </div>
+    </div>
+
+    <script>
+        const API = 'http://localhost:8080/api';
+
+        function setStep(step, state) {
+            document.getElementById('step' + step).className = 'step ' + state;
+        }
+
+        function resetSteps() {
+            [1,2,3,4].forEach(i => document.getElementById('step' + i).className = 'step');
+        }
+
+        async function generateFull() {
+            const topic = document.getElementById('topic').value.trim();
+            if (!topic) { showError('Please enter a topic'); return; }
+
+            resetSteps();
+            showLoader(true);
+            hideError();
+            document.getElementById('result').style.display = 'none';
+            document.getElementById('generateBtn').disabled = true;
+
+            try {
+                setStep(1, 'active');
+                const res = await fetch(API + '/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        topic: topic,
+                        difficulty: document.getElementById('difficulty').value,
+                        model: document.getElementById('model').value
+                    })
+                });
+
+                const data = await res.json();
+
+                if (data.status === 'ERROR') { showError(data.message); return; }
+
+                setStep(1, 'done'); setStep(2, 'done');
+                setStep(3, 'done'); setStep(4, 'done');
+
+                renderResult(data);
+
+                if (data.videoFileName) {
+                    document.getElementById('downloadSection').style.display = 'block';
+                    document.getElementById('downloadBtn').textContent = '⬇️ Download Video (MP4)';
+                    document.getElementById('downloadBtn').onclick = () => {
+                        window.location.href = API + '/download/' + data.videoFileName;
+                    };
+                }
+
+            } catch (e) {
+                showError('Server error: ' + e.message);
+            } finally {
+                showLoader(false);
+                document.getElementById('generateBtn').disabled = false;
+            }
+        }
+
+        async function generateScriptOnly() {
+            const topic = document.getElementById('topic').value.trim();
+            if (!topic) { showError('Please enter a topic'); return; }
+
+            resetSteps();
+            showLoader(true);
+            hideError();
+            document.getElementById('result').style.display = 'none';
+
+            try {
+                setStep(1, 'active');
+                const res = await fetch(API + '/script', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        topic: topic,
+                        difficulty: document.getElementById('difficulty').value,
+                        model: document.getElementById('model').value
+                    })
+                });
+
+                const data = await res.json();
+                if (data.status === 'ERROR') { showError(data.message); return; }
+
+                setStep(1, 'done'); setStep(2, 'done');
+                renderResult(data);
+
+            } catch (e) {
+                showError('Server error: ' + e.message);
+            } finally {
+                showLoader(false);
+            }
+        }
+
+        function renderResult(data) {
+            document.getElementById('scriptOutput').textContent = data.fullScript;
+
+            const scenesDiv = document.getElementById('scenesOutput');
+            scenesDiv.innerHTML = '';
+            if (data.scenes && data.scenes.length > 0) {
+                data.scenes.forEach(scene => {
+                    scenesDiv.innerHTML += `
+                        <div class="scene-card">
+                            <div class="scene-title">Scene ${scene.sceneNumber}: ${scene.title}</div>
+                            <div>${scene.narration}</div>
+                            <div style="color:#555; margin-top:6px;">🖼 ${scene.visualKeyword}</div>
+                        </div>`;
+                });
+            }
+
+            document.getElementById('result').style.display = 'block';
+        }
+
+        function showLoader(show) {
+            document.getElementById('loader').style.display = show ? 'block' : 'none';
+        }
+
+        function showError(msg) {
+            const el = document.getElementById('error');
+            el.textContent = '❌ ' + msg;
+            el.style.display = 'block';
+            showLoader(false);
+        }
+
+        function hideError() {
+            document.getElementById('error').style.display = 'none';
+        }
+    </script>
+</body>
+</html>

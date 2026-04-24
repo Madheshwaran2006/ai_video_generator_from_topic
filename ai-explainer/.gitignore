@@ -1,0 +1,23 @@
+# Security — never commit these
+.env
+*.env
+
+# API keys
+application-secrets.properties
+
+# Spring Boot
+target/
+*.jar
+*.war
+
+# Generated output files
+generated/
+
+# IDE files
+.idea/
+*.iml
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db

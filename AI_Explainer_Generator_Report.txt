@@ -1,0 +1,226 @@
+AI EXPLAINER GENERATOR
+Project Report
+================================================================================
+
+ABSTRACT
+--------------------------------------------------------------------------------
+This project presents an AI-powered explainer video generation system that
+automatically converts any engineering concept into a structured, animated
+explainer video. The system accepts a topic as input and produces a complete
+MP4 video with AI-generated narration, background images, and animated text
+overlays. The pipeline integrates Groq API for script generation, Windows
+Text-to-Speech for audio, and FFmpeg for video assembly, all orchestrated
+through a Spring Boot backend with a clean web-based frontend.
+
+
+1. INTRODUCTION
+--------------------------------------------------------------------------------
+In modern education, students often struggle to understand complex engineering
+concepts from static textbooks and lecture notes. Visual and audio-based
+learning has proven to be significantly more effective in knowledge retention.
+However, creating explainer videos manually requires expertise in video editing,
+scripting, and voice recording which is time-consuming and expensive.
+
+This project addresses that gap by building an automated AI pipeline that
+transforms any topic into a ready-to-watch explainer video within minutes.
+The system uses the Feynman Technique — explaining concepts in simple language
+with real-life analogies — to make content accessible to all learners.
+
+
+2. OBJECTIVES
+--------------------------------------------------------------------------------
+- To build an end-to-end automated pipeline for explainer video generation
+- To apply the Feynman Technique for simplified concept explanation
+- To integrate multiple free AI tools into a unified system
+- To produce structured, animated videos with synchronized audio
+- To provide a clean web interface for easy topic input and video download
+
+
+3. SYSTEM ARCHITECTURE
+--------------------------------------------------------------------------------
+The system follows a layered pipeline architecture:
+
+  Frontend (HTML/CSS/JS)
+  Topic Input → Model Selection → UI
+          |
+          v
+  Spring Boot REST Backend (Java 21 + Maven)
+          |
+          v
+  Groq API (Llama 3.3)          Scene Parser Service
+  Script Generation      -----> (5 Scenes)
+          |                          |
+          v                          v
+  Windows TTS (Audio MP3)    Unsplash Images (Per Scene)
+          |                          |
+          +----------+---------------+
+                     |
+                     v
+             FFmpeg Video Assembly
+             + Animations
+                     |
+                     v
+             MP4 Output → Download
+
+
+4. TECH STACK
+--------------------------------------------------------------------------------
+Component       Technology                  Purpose
+-----------     -------------------------   --------------------------------
+Frontend        HTML, CSS, JavaScript       User interface
+Backend         Spring Boot (Java 21)       REST API, pipeline orchestration
+Build Tool      Maven                       Dependency management
+AI Model        Groq API (Llama 3.3 70B)   Script generation
+Voice           Windows TTS (PowerShell)    Audio narration
+Video           FFmpeg 8.1                  Video assembly and animation
+Images          Unsplash API                Scene background images
+Font            Arial TTF                   Text rendering in video
+
+
+5. PIPELINE EXPLANATION
+--------------------------------------------------------------------------------
+
+5.1 Script Generation
+The system sends the user's topic to the Groq API using the Llama 3.3 70B
+model. A carefully engineered prompt instructs the model to apply the Feynman
+Technique and generate exactly 5 scenes with title, narration, and visual
+keyword per scene. The prompt enforces natural speech with no slide references
+or scene labels in the narration.
+
+5.2 Scene Parsing
+The generated script is parsed by the SceneParserService which splits the
+content into structured Scene objects. Each scene contains a scene number,
+title, narration text, and a visual keyword for image search. The parser
+handles multi-line narrations using regex with DOTALL mode.
+
+5.3 Audio Generation
+The full script is cleaned to remove all formatting markers, scene labels, and
+unwanted phrases before being passed to Windows Text-to-Speech via PowerShell.
+The speech synthesizer outputs a WAV file which is then converted to MP3 using
+FFmpeg.
+
+5.4 Image Download
+For each scene, the system downloads a relevant background image from Unsplash
+using the scene's visual keyword. If the download fails, a solid color fallback
+image is generated using FFmpeg.
+
+5.5 Video Assembly
+Each scene is built as an individual MP4 clip using FFmpeg with:
+- Background image with dark overlay for readability
+- Fade in and fade out transitions
+- Title text at the top with slide-in animation
+- Narration lines centered vertically with staggered fade-in
+- Purple progress bar at the bottom
+- Dynamic scene duration calculated from actual audio length
+
+All scene clips are concatenated using FFmpeg's concat demuxer and merged
+with the audio track to produce the final MP4.
+
+
+6. MODULES
+--------------------------------------------------------------------------------
+
+6.1 ScriptGeneratorService
+Calls the Groq API with a structured Feynman-style prompt. Supports 4
+selectable AI models: Llama 3.3 70B, Llama 3.1 70B, Mixtral 8x7B, and
+Gemma 2 9B. Returns the raw script string.
+
+6.2 SceneParserService
+Parses the raw script into a list of Scene objects. Handles both labeled
+(Narration:) and unlabeled formats returned by different AI models.
+
+6.3 VoiceGeneratorService
+Cleans the script and generates audio using Windows built-in Speech Synthesis.
+Converts WAV to MP3 using FFmpeg. Requires no external API or subscription.
+
+6.4 VideoAssemblerService
+Builds individual scene videos with animations and text overlays. Downloads
+background images from Unsplash. Concatenates scenes and merges audio.
+Calculates per-scene duration dynamically from actual audio length.
+
+6.5 ExplainerController
+REST controller exposing three endpoints:
+- POST /api/generate  — full pipeline (script + audio + video)
+- POST /api/script    — script and scenes only
+- GET  /api/download/{fileName} — download generated MP4 or MP3
+
+
+7. API ENDPOINTS
+--------------------------------------------------------------------------------
+Method    Endpoint                    Description
+------    --------------------------  ----------------------------------------
+POST      /api/generate               Full pipeline: script, audio, video
+POST      /api/script                 Script and scenes only
+GET       /api/download/{fileName}    Download generated MP4 or MP3
+
+Request Body (POST /api/generate):
+{
+  "topic": "Deadlock in Operating Systems",
+  "difficulty": "beginner",
+  "model": "llama-3.3-70b-versatile"
+}
+
+Response Body:
+{
+  "topic": "Deadlock in Operating Systems",
+  "fullScript": "...",
+  "scenes": [...],
+  "audioFileName": "deadlock_123.mp3",
+  "videoFileName": "deadlock_123.mp4",
+  "status": "SUCCESS",
+  "message": "Video generated successfully"
+}
+
+
+8. CHALLENGES FACED AND SOLUTIONS
+--------------------------------------------------------------------------------
+Challenge                               Solution
+------------------------------------    ----------------------------------------
+OpenAI quota exceeded                   Switched to Groq API (free, fast)
+ElevenLabs requires subscription        Replaced with Windows built-in TTS
+Google TTS requires billing             Used Windows PowerShell Speech Synthesis
+FFmpeg font rendering error             Copied Arial font to path without spaces
+FFmpeg concat failing                   Moved output to C:/aiexplainer (no spaces)
+Scene narration showing 0 chars         Rewrote parser with DOTALL regex
+Audio not synced with video             Calculated per-scene duration from audio
+API keys exposed in properties          Replaced with environment variables
+
+
+9. FUTURE ENHANCEMENTS
+--------------------------------------------------------------------------------
+- PDF and notes upload for auto video generation
+- Multiple voice options and language support
+- Background music layer
+- Custom branding and themes
+- Video history and management dashboard
+- Cloud deployment on AWS EC2 or Elastic Beanstalk
+- Support for diagrams and charts per scene
+- Mobile responsive UI
+
+
+10. CONCLUSION
+--------------------------------------------------------------------------------
+The AI Explainer Generator successfully demonstrates how multiple free AI tools
+can be integrated into a unified automated pipeline to solve a real educational
+problem. The system produces structured, animated explainer videos from any
+engineering topic in under 5 minutes, requiring only a topic name as input.
+
+The project showcases skills in Spring Boot backend development, REST API
+design, AI prompt engineering, FFmpeg video processing, and full-stack
+integration — making it a strong demonstration of practical AI application
+development.
+
+
+11. REFERENCES
+--------------------------------------------------------------------------------
+1. Groq API Documentation         — console.groq.com/docs
+2. Meta Llama 3.3 Model           — ai.meta.com
+3. FFmpeg Documentation           — ffmpeg.org/documentation.html
+4. Spring Boot Documentation      — spring.io/projects/spring-boot
+5. Unsplash API                   — unsplash.com/developers
+6. Feynman Technique              — Richard Feynman, Caltech Lectures
+7. Windows Speech Synthesis       — docs.microsoft.com/dotnet/api/system.speech
+
+================================================================================
+END OF REPORT
+================================================================================
